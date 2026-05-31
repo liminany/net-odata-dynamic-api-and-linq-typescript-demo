@@ -1,0 +1,10 @@
+[
+  {"Id":1,"CustomerId":1,"ProductIds":[1,8],"TotalAmount":14898.00,"Status":"Completed","OrderDate":"2026-03-10T00:00:00Z","PaymentMethod":"WeChat"},
+  {"Id":2,"CustomerId":5,"ProductIds":[2,4,7],"TotalAmount":21596.00,"Status":"Shipped","OrderDate":"2026-04-05T00:00:00Z","PaymentMethod":"Alipay"},
+  {"Id":3,"CustomerId":2,"ProductIds":[3],"TotalAmount":4299.00,"Status":"Completed","OrderDate":"2026-04-12T00:00:00Z","PaymentMethod":"CreditCard"},
+  {"Id":4,"CustomerId":3,"ProductIds":[6,8],"TotalAmount":10898.00,"Status":"Processing","OrderDate":"2026-05-01T00:00:00Z","PaymentMethod":"WeChat"},
+  {"Id":5,"CustomerId":1,"ProductIds":[1,7],"TotalAmount":13697.00,"Status":"Completed","OrderDate":"2026-05-15T00:00:00Z","PaymentMethod":"Alipay"},
+  {"Id":6,"CustomerId":4,"ProductIds":[4],"TotalAmount":899.00,"Status":"Cancelled","OrderDate":"2026-05-20T00:00:00Z","PaymentMethod":"WeChat"},
+  {"Id":7,"CustomerId":5,"ProductIds":[9,10],"TotalAmount":20598.00,"Status":"Shipped","OrderDate":"2026-05-22T00:00:00Z","PaymentMethod":"CreditCard"},
+  {"Id":8,"CustomerId":2,"ProductIds":[5],"TotalAmount":1299.00,"Status":"Processing","OrderDate":"2026-05-28T00:00:00Z","PaymentMethod":"Alipay"}
+]

@@ -1,0 +1,9 @@
+backend/.nuget-config/
+backend/packages
+backend/.dotnet
+backend/.nuget
+frontend/.npm-cache
+frontend/app/dist
+frontend/app/node_modules
+backend/DynamicODataApi/bin
+backend/DynamicODataApi/obj

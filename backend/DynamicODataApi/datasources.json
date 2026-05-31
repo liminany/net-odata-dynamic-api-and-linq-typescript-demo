@@ -1,0 +1,19 @@
+{
+  "dataSources": [
+    {
+      "entitySetName": "Products",
+      "filePath": "Data/products.json",
+      "idProperty": "Id"
+    },
+    {
+      "entitySetName": "Customers",
+      "filePath": "Data/customers.json",
+      "idProperty": "Id"
+    },
+    {
+      "entitySetName": "Orders",
+      "filePath": "Data/orders.json",
+      "idProperty": "Id"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {"Id":1,"Name":"ThinkPad X1 Carbon","Category":"Laptop","Price":12999.00,"InStock":true,"Rating":4.5,"Tags":["business","ultralight","14-inch"],"CreatedAt":"2026-01-15T00:00:00Z"},
+  {"Id":2,"Name":"MacBook Pro 16","Category":"Laptop","Price":19999.00,"InStock":true,"Rating":4.8,"Tags":["creative","pro","16-inch"],"CreatedAt":"2026-02-10T00:00:00Z"},
+  {"Id":3,"Name":"Dell U2723QE Monitor","Category":"Monitor","Price":4299.00,"InStock":true,"Rating":4.6,"Tags":["4K","USB-C","27-inch"],"CreatedAt":"2026-01-20T00:00:00Z"},
+  {"Id":4,"Name":"Logitech MX Master 3S","Category":"Accessory","Price":899.00,"InStock":true,"Rating":4.7,"Tags":["mouse","ergonomic","wireless"],"CreatedAt":"2026-03-05T00:00:00Z"},
+  {"Id":5,"Name":"Samsung T7 Shield 2TB","Category":"Storage","Price":1299.00,"InStock":false,"Rating":4.4,"Tags":["SSD","portable","USB-C"],"CreatedAt":"2026-02-28T00:00:00Z"},
+  {"Id":6,"Name":"iPad Pro M4","Category":"Tablet","Price":8999.00,"InStock":true,"Rating":4.9,"Tags":["tablet","creative","M4"],"CreatedAt":"2026-04-01T00:00:00Z"},
+  {"Id":7,"Name":"Keychron K8 Pro","Category":"Accessory","Price":698.00,"InStock":true,"Rating":4.3,"Tags":["keyboard","mechanical","wireless"],"CreatedAt":"2026-03-15T00:00:00Z"},
+  {"Id":8,"Name":"AirPods Pro 2","Category":"Audio","Price":1899.00,"InStock":true,"Rating":4.6,"Tags":["earbuds","noise-cancelling","wireless"],"CreatedAt":"2026-01-08T00:00:00Z"},
+  {"Id":9,"Name":"RTX 5090","Category":"GPU","Price":15999.00,"InStock":false,"Rating":4.8,"Tags":["graphics","gaming","AI"],"CreatedAt":"2026-05-10T00:00:00Z"},
+  {"Id":10,"Name":"Synology DS923+","Category":"NAS","Price":4599.00,"InStock":true,"Rating":4.5,"Tags":["NAS","4-bay","storage"],"CreatedAt":"2026-04-20T00:00:00Z"}
+]

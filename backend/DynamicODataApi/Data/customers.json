@@ -1,0 +1,8 @@
+[
+  {"Id":1,"Name":"张三","Email":"zhangsan@example.com","City":"北京","Level":"VIP","Balance":56800.50,"Orders":12,"RegisteredAt":"2025-06-15T00:00:00Z"},
+  {"Id":2,"Name":"李四","Email":"lisi@example.com","City":"上海","Level":"Gold","Balance":23500.00,"Orders":8,"RegisteredAt":"2025-08-20T00:00:00Z"},
+  {"Id":3,"Name":"王五","Email":"wangwu@example.com","City":"深圳","Level":"Gold","Balance":18900.75,"Orders":5,"RegisteredAt":"2025-11-01T00:00:00Z"},
+  {"Id":4,"Name":"赵六","Email":"zhaoliu@example.com","City":"杭州","Level":"Silver","Balance":6200.00,"Orders":3,"RegisteredAt":"2026-01-10T00:00:00Z"},
+  {"Id":5,"Name":"孙七","Email":"sunqi@example.com","City":"北京","Level":"VIP","Balance":89200.00,"Orders":20,"RegisteredAt":"2025-03-05T00:00:00Z"},
+  {"Id":6,"Name":"周八","Email":"zhouba@example.com","City":"成都","Level":"Silver","Balance":3500.00,"Orders":2,"RegisteredAt":"2026-02-28T00:00:00Z"}
+]
