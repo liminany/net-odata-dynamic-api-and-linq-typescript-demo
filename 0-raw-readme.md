@@ -1,14 +1,16 @@
-# 业务场景介绍
+## 业务场景介绍
 
-# 项目需求描述
+## 项目需求描述
 
 我想采用net10后端技术栈做一个基于OData协议的API，要求是能通过我提供的一个或几个json格式数据源，把这个数据暴漏成一个或多API，而不需要我为每个业务对象去写ODataController，以便我在前端采用类似linq to object/lamda表达式的方式来动态搜索这个json数据并展示 到界面中。前端项目采用这个技能 @skill:modern-web-app 来创建。有必要的话请先调用所需要的技术栈和工具包。
 
 **第一版的问题**
-- 前端自己实现一套查询机制，没有使用基于OData协议的前端库，无法采用linq和Lambda语法的形式来查询数据
-- 后端是自己实现了一个动态OData 实体暴露，没有使用现成的OData库，没有使用已经的框架中的库？
-- 没有考虑接入EF架构，后续引入数据库存储扩展可能会不方便
+- [x] 前端自己实现一套查询机制，没有使用基于OData协议的前端库，无法采用linq和Lambda语法的形式来查询数据
+- [x] 后端是自己实现了一个动态OData 实体暴露，没有使用现成的OData库，没有使用已经的框架中的库？
+- [ ] 没有考虑数据的新增加修改以及后续接入EF架构，后续引入数据库存储扩展可能会不方便
 
+```
 Layer 4: 通用 DynamicODataController (只需一个!)
 GET /odata/{entitySet}?$filter=...&$select=...&$orderby=...&$top=...
 映射到 EntityDataStore → 返回 IQueryable → OData 中间件自动处理查询
+```
