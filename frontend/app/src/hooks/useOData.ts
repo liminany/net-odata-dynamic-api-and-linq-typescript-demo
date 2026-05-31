@@ -1,9 +1,20 @@
 import { useState, useCallback } from "react";
-import buildODataQuery from "odata-query";
-import type { EntitySetInfo, EntitySchema, DynamicEntity, ODataQueryParams } from "@/types/odata";
+import { ODataService } from "@jin-qu/odata";
+import type { EntitySetInfo, EntitySchema, ODataQueryParams, DynamicEntity } from "@/types/odata";
 
-const API_BASE = "http://localhost:5000";
+// 自动生成的实体类映射（npm run generate-entities 从 $metadata 生成）
+import { Products, Customers, Orders } from "@/types/generated/entities";
 
+const API_BASE = "http://localhost:5000/odata";
+
+/** 实体名 → 实体类（jinqu-odata 用它解析 /odata/{EntitySetName} 路由） */
+const entityClassMap: Record<string, new () => object> = {
+  Products, Customers, Orders,
+};
+
+const odataService = new ODataService(API_BASE);
+
+// ====== 纯 fetch 回退（用于字符串 filter 查询） ======
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
@@ -26,11 +37,10 @@ export function useOData() {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
   const [entitySets, setEntitySets] = useState<EntitySetInfo[]>([]);
-  const [generatedUrl, setGeneratedUrl] = useState<string>("");
 
   const loadEntitySets = useCallback(async () => {
     try {
-      const sets = await fetchJson<EntitySetInfo[]>(`${API_BASE}/odata/admin/entity-sets`);
+      const sets = await fetchJson<EntitySetInfo[]>(`${API_BASE}/admin/entity-sets`);
       setEntitySets(sets);
       return sets;
     } catch (e) {
@@ -41,68 +51,44 @@ export function useOData() {
 
   const loadSchema = useCallback(async (entitySet: string): Promise<EntitySchema | null> => {
     try {
-      return await fetchJson<EntitySchema>(`${API_BASE}/odata/admin/schema/${entitySet}`);
-    } catch {
-      return null;
-    }
+      return await fetchJson<EntitySchema>(`${API_BASE}/admin/schema/${entitySet}`);
+    } catch { return null; }
   }, []);
 
   /**
-   * 使用 odata-query 库构建 OData URL。
-   * 提供 LINQ/Lambda 式查询接口：
+   * 执行 OData 查询。
    * 
-   *   buildQuery('Products', {
-   *     filter: { Price: { gt: 1000 } },
-   *     select: ['Name', 'Price'],
-   *     orderBy: [['Price', 'desc']],
-   *     top: 5,
-   *     count: true
-   *   })
-   *   → /odata/Products?$filter=Price gt 1000&$select=Name,Price&$orderby=Price desc&$top=5&$count=true
+   * 字符串 filter 模式（UI QueryBuilder）：用 fetch + 拼接 URL
+   * Lambda 模式（代码编写）：用 odataService.createQuery(Products).where(p => p.Price > 1000)
+   * 
+   * 两种模式共享同一个 ODataService 和实体类映射。
    */
   const executeQuery = useCallback(async (params: ODataQueryParams) => {
     setLoading(true);
     setError(null);
 
     try {
-      // 用 odata-query 库构建查询字符串（LINQ/Lambda 式）
-      const queryOpts: Record<string, unknown> = {};
+      const entityClass = entityClassMap[params.entitySet];
+      if (!entityClass)
+        throw new Error(`Unknown entity: "${params.entitySet}". Run "npm run generate-entities"`);
 
-      if (params.filter) {
-        // 字符串 filter 原样传递
-        queryOpts.filter = params.filter;
-      }
-      if (params.select) {
-        queryOpts.select = params.select.split(",").map(s => s.trim());
-      }
-      if (params.orderby) {
-        queryOpts.orderBy = params.orderby;
-      }
-      if (params.top != null) queryOpts.top = params.top;
-      if (params.skip != null) queryOpts.skip = params.skip;
-      if (params.count) queryOpts.count = true;
+      const queryParts: string[] = [];
+      if (params.filter) queryParts.push(`$filter=${encodeURIComponent(params.filter)}`);
+      if (params.select) queryParts.push(`$select=${encodeURIComponent(params.select)}`);
+      if (params.orderby) queryParts.push(`$orderby=${encodeURIComponent(params.orderby)}`);
+      if (params.top != null) queryParts.push(`$top=${params.top}`);
+      if (params.skip != null) queryParts.push(`$skip=${params.skip}`);
+      if (params.count) queryParts.push(`$count=true`);
 
-      const queryStr = buildODataQuery(queryOpts);
-      const url = `${API_BASE}/odata/${params.entitySet}${queryStr}`;
-      setGeneratedUrl(url);
+      const qs = queryParts.length > 0 ? `?${queryParts.join("&")}` : "";
+      const url = `${API_BASE}/${params.entitySet}${qs}`;
 
       const result = await fetchJson<QueryResponse>(url);
-      
-      // 兼容 OData 标准格式 { value: [...] } 和直接数组格式 [...]
-      const items: DynamicEntity[] = Array.isArray(result) 
-        ? result 
-        : (result.value || []);
+      const items: DynamicEntity[] = Array.isArray(result) ? result : (result.value || []);
 
       setData(items);
-      
-      // 读取 @odata.count（标准）或 count（简化）
-      const cnt = result["@odata.count"] ?? result.count ?? null;
-      setTotalCount(cnt);
-
-      if (items.length > 0) {
-        setColumns(Object.keys(items[0]));
-      }
-
+      setTotalCount(result["@odata.count"] ?? result.count ?? null);
+      if (items.length > 0) setColumns(Object.keys(items[0]));
       return items;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Query execution failed");
@@ -113,17 +99,38 @@ export function useOData() {
     }
   }, []);
 
+  /**
+   * 暴露 jinqu-odata 的 Lambda 查询接口，供代码编写时使用
+   * 
+   * @example
+   *   const { lambdaQuery } = useOData();
+   *   const books = await lambdaQuery(Products, q => q
+   *     .where(p => p.Price > 1000)
+   *     .orderBy(p => p.Price)
+   *     .take(5)
+   *   );
+   */
+  const lambdaQuery = useCallback(async <T extends object>(
+    entityClass: new () => T,
+    build: (q: ReturnType<typeof odataService.createQuery<T>>) => ReturnType<typeof odataService.createQuery<T>>
+  ): Promise<T[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      let query = odataService.createQuery(entityClass);
+      query = build(query);
+      const result = await (query as any).toArrayAsync();
+      return result as T[];
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Lambda query failed");
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
-    loading,
-    error,
-    data,
-    totalCount,
-    columns,
-    entitySets,
-    generatedUrl,
-    loadEntitySets,
-    loadSchema,
-    executeQuery,
-    setError,
+    loading, error, data, totalCount, columns, entitySets,
+    loadEntitySets, loadSchema, executeQuery, lambdaQuery, setError,
   };
 }

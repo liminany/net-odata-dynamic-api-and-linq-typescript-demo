@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { EntitySelector } from "@/sections/EntitySelector";
 import { QueryBuilder } from "@/sections/QueryBuilder";
 import { DataTable } from "@/sections/DataTable";
+import { LambdaPlayground } from "@/sections/LambdaPlayground";
 import { useOData } from "@/hooks/useOData";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import type { PropertySchema, ODataQueryParams } from "@/types/odata";
 import { Database, RefreshCw, Code2, Layers } from "lucide-react";
@@ -114,34 +115,36 @@ export default function App() {
         {/* Right Content */}
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Tabs for views */}
-          <div className="border-b px-4 py-2 bg-card">
-            <Tabs defaultValue="query" className="w-full">
-              <TabsList className="h-8">
-                <TabsTrigger value="query" className="text-xs h-7">查询 Query</TabsTrigger>
-                <TabsTrigger value="raw" className="text-xs h-7">原始 JSON</TabsTrigger>
-              </TabsList>
+          <div className="flex-1 overflow-auto">
+            <Tabs defaultValue="query" className="w-full h-full flex flex-col">
+              <div className="border-b px-4 py-2 bg-card">
+                <TabsList className="h-8">
+                  <TabsTrigger value="query" className="text-xs h-7">查询 Query</TabsTrigger>
+                  <TabsTrigger value="lambda" className="text-xs h-7">Lambda 演示</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="query" className="flex-1 overflow-auto p-4 space-y-4 mt-0">
+                <QueryBuilder
+                  entitySet={selectedEntity || ""}
+                  schema={schema}
+                  loading={loading}
+                  onExecute={handleExecuteQuery}
+                />
+                <Separator />
+                <DataTable
+                  data={data}
+                  columns={columns}
+                  totalCount={totalCount}
+                  loading={loading}
+                  error={error}
+                />
+              </TabsContent>
+
+              <TabsContent value="lambda" className="flex-1 overflow-auto p-4 mt-0">
+                <LambdaPlayground />
+              </TabsContent>
             </Tabs>
-          </div>
-
-          <div className="flex-1 overflow-auto p-4 space-y-4">
-            {/* Query Builder */}
-            <QueryBuilder
-              entitySet={selectedEntity || ""}
-              schema={schema}
-              loading={loading}
-              onExecute={handleExecuteQuery}
-            />
-
-            <Separator />
-
-            {/* Data Table */}
-            <DataTable
-              data={data}
-              columns={columns}
-              totalCount={totalCount}
-              loading={loading}
-              error={error}
-            />
           </div>
         </main>
       </div>
