@@ -5,28 +5,23 @@ using Microsoft.AspNetCore.OData;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. 加载数据源配置
+// ====== 阶段 1: 加载数据源配置 ======
 var configPath = Path.Combine(AppContext.BaseDirectory, "datasources.json");
 if (!File.Exists(configPath))
-{
-    // fallback: try relative path
     configPath = Path.Combine(Directory.GetCurrentDirectory(), "datasources.json");
-}
 
 var dataSourceRoot = File.Exists(configPath)
-    ? JsonSerializer.Deserialize<DataSourceRoot>(File.ReadAllText(configPath), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+    ? JsonSerializer.Deserialize<DataSourceRoot>(File.ReadAllText(configPath),
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
     : new DataSourceRoot();
 
-Console.WriteLine($"[Init] Loaded {dataSourceRoot?.DataSources.Count ?? 0} data source configs from {configPath}");
+Console.WriteLine($"[Init] Loaded {dataSourceRoot?.DataSources.Count ?? 0} data source configs");
 
-// 2. 注册服务（Singleton，因为数据在内存中）
+// ====== 阶段 2: 推断 JSON Schema ======
+var logFactory = LoggerFactory.Create(l => l.AddConsole().SetMinimumLevel(LogLevel.Information));
 var schemaService = new JsonSchemaInferenceService(
-    builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger<JsonSchemaInferenceService>());
+    logFactory.CreateLogger<JsonSchemaInferenceService>());
 
-var entityStore = new EntityDataStore(
-    builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger<EntityDataStore>());
-
-// 3. 推断 Schema + 构建 EDM 模型
 var schemas = new List<EntitySchema>();
 if (dataSourceRoot?.DataSources != null)
 {
@@ -36,12 +31,41 @@ if (dataSourceRoot?.DataSources != null)
         {
             var schema = schemaService.InferSchema(ds.FilePath, ds.EntitySetName, ds.IdProperty);
             schemas.Add(schema);
-
-            entityStore.LoadDataSource(ds);
-
             Console.WriteLine($"[Schema] {ds.EntitySetName}: {schema.Properties.Count} properties, key={ds.IdProperty}");
-            foreach (var p in schema.Properties)
-                Console.WriteLine($"  - {p.Name} ({p.ODataTypeName}) {(p.IsKey ? "[KEY]" : "")}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Warn] Failed to infer schema for {ds.EntitySetName}: {ex.Message}");
+        }
+    }
+}
+
+// ====== 阶段 3: 运行时生成 CLR 类型 (Reflection.Emit) ======
+var typeBuilder = new DynamicTypeBuilder(logFactory.CreateLogger<DynamicTypeBuilder>());
+foreach (var schema in schemas)
+{
+    typeBuilder.GetOrCreateType(schema);
+    Console.WriteLine($"[Type] {schema.EntitySetName} → {schema.ClrType!.FullName}");
+}
+
+// ====== 阶段 4: 基于 CLR 类型构建 EDM 模型 ======
+var edmBuilder = new DynamicEdmModelBuilder(logFactory.CreateLogger<DynamicEdmModelBuilder>());
+var edmModel = edmBuilder.Build(schemas);
+Console.WriteLine($"[EDM] Model built with {schemas.Count} entity types");
+
+// ====== 阶段 5: 加载数据（使用 CLR 类型实例化实体） ======
+var entityStore = new EntityDataStore(logFactory.CreateLogger<EntityDataStore>());
+if (dataSourceRoot?.DataSources != null)
+{
+    foreach (var ds in dataSourceRoot.DataSources)
+    {
+        var schema = schemas.FirstOrDefault(s =>
+            string.Equals(s.EntitySetName, ds.EntitySetName, StringComparison.OrdinalIgnoreCase));
+        if (schema?.ClrType == null) continue;
+
+        try
+        {
+            entityStore.LoadDataSource(ds, schema.ClrType);
         }
         catch (Exception ex)
         {
@@ -50,16 +74,10 @@ if (dataSourceRoot?.DataSources != null)
     }
 }
 
-var modelBuilder = new DynamicEdmModelBuilder(
-    builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger<DynamicEdmModelBuilder>());
-
-var edmModel = modelBuilder.Build(schemas);
-
-// 注册为 DI 服务
+// ====== 阶段 6: 注册依赖注入 ======
 builder.Services.AddSingleton(entityStore);
 builder.Services.AddSingleton(edmModel);
 
-// 4. 配置 OData + Controllers
 builder.Services.AddControllers()
     .AddOData(opt =>
     {
@@ -67,21 +85,14 @@ builder.Services.AddControllers()
         opt.AddRouteComponents("odata", edmModel);
     });
 
-// 5. CORS（允许前端跨域访问）
 builder.Services.AddCors(opt =>
 {
     opt.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .WithExposedHeaders("*");
-    });
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader().WithExposedHeaders("*"));
 });
 
 var app = builder.Build();
 
-// 6. 中间件管道
 app.UseCors();
 app.UseRouting();
 app.MapControllers();
@@ -90,18 +101,11 @@ Console.WriteLine($@"
 ═══════════════════════════════════════════
  Dynamic OData API is ready!
 ═══════════════════════════════════════════
- Available endpoints:
-
-  GET /odata/{{entitySetName}}    - Query entities with OData options
-    Examples:
-    /odata/Products?$filter=Price gt 1000
-    /odata/Products?$select=Name,Price&$orderby=Price desc&$top=5
-    /odata/Products?$count=true
-    /odata/Products/1          - Get single entity by ID
-
-  GET /odata/admin/entity-sets  - List all available entity sets
-  GET /odata/admin/schema/{{name}} - Get entity schema
-  GET /odata/$metadata          - OData metadata document
+ Entities: {string.Join(", ", entityStore.GetEntitySetNames())}
+ 
+  GET /odata/{{entitySetName}}?$filter=...&$select=...&$orderby=...
+  GET /odata/$metadata
+  GET /odata/admin/entity-sets
 ═══════════════════════════════════════════
 ");
 

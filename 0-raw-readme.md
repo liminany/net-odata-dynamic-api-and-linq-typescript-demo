@@ -8,3 +8,7 @@
 - 前端自己实现一套查询机制，没有使用基于OData协议的前端库，无法采用linq和Lambda语法的形式来查询数据
 - 后端是自己实现了一个动态OData 实体暴露，没有使用现成的OData库，没有使用已经的框架中的库？
 - 没有考虑接入EF架构，后续引入数据库存储扩展可能会不方便
+
+Layer 4: 通用 DynamicODataController (只需一个!)
+GET /odata/{entitySet}?$filter=...&$select=...&$orderby=...&$top=...
+映射到 EntityDataStore → 返回 IQueryable → OData 中间件自动处理查询

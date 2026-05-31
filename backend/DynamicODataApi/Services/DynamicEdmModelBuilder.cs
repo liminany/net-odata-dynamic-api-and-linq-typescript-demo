@@ -1,70 +1,42 @@
 using DynamicODataApi.Models;
 using Microsoft.OData.Edm;
+using Microsoft.OData.ModelBuilder;
 
 namespace DynamicODataApi.Services;
 
 /// <summary>
-/// 根据推断的 JSON Schema 动态构建 OData EDM 模型
-/// 使用底层 EdmModel API，不依赖 CLR 类型——真正做到零代码添加实体
+/// 基于运行时生成的 CLR Type 构建 OData EDM 模型。
+/// 
+/// 与旧版的区别：
+///   - 旧版用底层 EdmModel/EdmEntityType API，EDM 实体没有 CLR 类型注解
+///   - 新版用 ODataConventionModelBuilder，从 CLR Type 自动发现属性、可空性、主键
+///     → EDM 实体带上 CLR 类型注解 → [EnableQuery] 可以通过反射找到真实属性
 /// </summary>
 public class DynamicEdmModelBuilder(ILogger<DynamicEdmModelBuilder> logger)
 {
     public IEdmModel Build(IEnumerable<EntitySchema> schemas)
     {
-        var model = new EdmModel();
-
-        // 创建默认容器 (EntityContainer)
-        var container = new EdmEntityContainer("DynamicOData", "Container");
-        model.AddElement(container);
+        var builder = new ODataConventionModelBuilder();
+        builder.Namespace = "DynamicOData";
 
         foreach (var schema in schemas)
         {
-            logger.LogInformation("Building EDM entity type for {EntitySet} with {Count} properties",
-                schema.EntitySetName, schema.Properties.Count);
-
-            // 创建 EdmEntityType
-            var entityType = new EdmEntityType("DynamicOData", schema.EntitySetName);
-            model.AddElement(entityType);
-
-            // 添加属性
-            foreach (var prop in schema.Properties)
+            if (schema.ClrType == null)
             {
-                var typeKind = GetEdmTypeKind(prop);
-                var isNullable = prop.IsNullable && !prop.IsKey;
-
-                var edmProp = entityType.AddStructuralProperty(
-                    prop.Name,
-                    typeKind,
-                    isNullable
-                );
-
-                // 设置主键
-                if (prop.IsKey)
-                {
-                    entityType.AddKeys(edmProp);
-                }
+                logger.LogWarning("No CLR type for {EntitySet}, skipping", schema.EntitySetName);
+                continue;
             }
 
-            // 注册到 EntityContainer
-            container.AddEntitySet(schema.EntitySetName, entityType);
+            logger.LogInformation("Building EDM for {EntitySet} from CLR type {Type}",
+                schema.EntitySetName, schema.ClrType.Name);
+
+            // ODataConventionModelBuilder 从 CLR 类型自动发现属性、类型、主键
+            var entityConfig = builder.AddEntityType(schema.ClrType);
+
+            // 添加 EntitySet
+            builder.AddEntitySet(schema.EntitySetName, entityConfig);
         }
 
-        return model;
-    }
-
-    private static EdmPrimitiveTypeKind GetEdmTypeKind(PropertySchema prop)
-    {
-        return prop.ClrType switch
-        {
-            not null when prop.ClrType == typeof(int) => EdmPrimitiveTypeKind.Int32,
-            not null when prop.ClrType == typeof(long) => EdmPrimitiveTypeKind.Int64,
-            not null when prop.ClrType == typeof(double) => EdmPrimitiveTypeKind.Double,
-            not null when prop.ClrType == typeof(decimal) => EdmPrimitiveTypeKind.Decimal,
-            not null when prop.ClrType == typeof(bool) => EdmPrimitiveTypeKind.Boolean,
-            not null when prop.ClrType == typeof(DateTimeOffset) => EdmPrimitiveTypeKind.DateTimeOffset,
-            not null when prop.ClrType == typeof(DateTime) => EdmPrimitiveTypeKind.DateTimeOffset,
-            not null when prop.ClrType == typeof(Guid) => EdmPrimitiveTypeKind.Guid,
-            _ => EdmPrimitiveTypeKind.String
-        };
+        return builder.GetEdmModel();
     }
 }

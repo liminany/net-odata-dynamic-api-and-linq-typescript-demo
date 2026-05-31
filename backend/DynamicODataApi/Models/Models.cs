@@ -38,4 +38,6 @@ public class EntitySchema
     public string EntitySetName { get; set; } = string.Empty;
     public string IdProperty { get; set; } = "Id";
     public List<PropertySchema> Properties { get; set; } = new();
+    /// <summary>运行时通过 Reflection.Emit 生成的 CLR 类型（有真实的属性，供 [EnableQuery] 反射使用）</summary>
+    public Type? ClrType { get; set; }
 }
